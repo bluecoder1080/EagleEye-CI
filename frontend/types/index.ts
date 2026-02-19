@@ -52,6 +52,7 @@ export interface RunAgentRequest {
   leaderName: string;
   retryLimit: number;
   dryRun?: boolean;
+  githubToken?: string; // User's GitHub token for pushing to their repos
 }
 
 export interface AnalyzeRequest {

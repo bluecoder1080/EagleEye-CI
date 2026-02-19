@@ -26,6 +26,7 @@ export interface OrchestratorOptions {
   retryLimit?: number;
   dryRun?: boolean;
   onProgress?: ProgressCallback;
+  githubToken?: string; // User-provided token for pushing to their repos
 }
 
 export interface FixRecord {
@@ -196,7 +197,7 @@ export class Orchestrator {
               this.addTimeline(timeline, "COMMIT", commitMsg);
 
               if (!options.dryRun) {
-                await this.pushBranch(repoPath, branchName, options.repoUrl);
+                await this.pushBranch(repoPath, branchName, options.repoUrl, options.githubToken);
                 this.addTimeline(timeline, "PUSH", branchName);
               }
               continue; // try again with the fix applied
@@ -256,7 +257,7 @@ export class Orchestrator {
 
       // 2g. Push (unless dry-run)
       if (!options.dryRun) {
-        await this.pushBranch(repoPath, branchName, options.repoUrl);
+        await this.pushBranch(repoPath, branchName, options.repoUrl, options.githubToken);
         this.addTimeline(timeline, "PUSH", branchName);
 
         // 2h. Wait for CI and check result
@@ -526,6 +527,7 @@ export class Orchestrator {
     repoPath: string,
     branch: string,
     repoUrl: string,
+    customToken?: string,
   ): Promise<void> {
     if (branch === "main" || branch === "master") {
       throw new Error("Refusing to push to main/master branch");
@@ -534,7 +536,8 @@ export class Orchestrator {
     const git = simpleGit(repoPath);
 
     // Inject GitHub token into remote URL for authentication
-    const token = config.github.token;
+    // Prefer user-provided token over default config token
+    const token = customToken || config.github.token;
     if (token && repoUrl) {
       try {
         const url = new URL(repoUrl);

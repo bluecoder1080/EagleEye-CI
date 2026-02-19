@@ -11,6 +11,7 @@ export interface RunAgentRequest {
   leaderName?: string;
   retryLimit?: number;
   dryRun?: boolean;
+  githubToken?: string; // User's GitHub token for pushing to their repos
 }
 
 export interface RunAgentResponse {
@@ -48,6 +49,7 @@ router.post("/run-agent", async (req: Request, res: Response) => {
       leaderName: body.leaderName,
       retryLimit: body.retryLimit,
       dryRun,
+      githubToken: body.githubToken,
     });
 
     const response: RunAgentResponse = {
@@ -120,6 +122,7 @@ router.post("/run-agent-stream", async (req: Request, res: Response) => {
       retryLimit: body.retryLimit,
       dryRun,
       onProgress,
+      githubToken: body.githubToken,
     });
 
     // Send final result

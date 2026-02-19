@@ -14,6 +14,7 @@ export default function RunTriggerForm({ onStartStream }: RunTriggerFormProps) {
   const [teamName, setTeamName] = useState("");
   const [leaderName, setLeaderName] = useState("");
   const [retryLimit, setRetryLimit] = useState(5);
+  const [githubToken, setGithubToken] = useState("");
   const { startRun, isRunning, error, clearError } = useAgentStore();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -27,6 +28,7 @@ export default function RunTriggerForm({ onStartStream }: RunTriggerFormProps) {
       teamName: teamName.trim(),
       leaderName: leaderName.trim(),
       retryLimit,
+      githubToken: githubToken.trim() || undefined,
     };
 
     // Use streaming if callback provided
@@ -174,6 +176,41 @@ export default function RunTriggerForm({ onStartStream }: RunTriggerFormProps) {
           className="glass-input max-w-[120px] tabular-nums"
         />
         <p className="text-xs text-gray-500">Max healing iterations (1–20)</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label
+          htmlFor="githubToken"
+          className="flex items-center gap-2 text-sm font-medium text-gray-300"
+        >
+          <svg
+            className="h-4 w-4 text-brand-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+            />
+          </svg>
+          GitHub Token
+          <span className="text-gray-500 font-normal">(optional)</span>
+        </label>
+        <input
+          id="githubToken"
+          type="password"
+          value={githubToken}
+          onChange={(e) => setGithubToken(e.target.value)}
+          placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+          disabled={isRunning}
+          className="glass-input font-mono text-sm"
+        />
+        <p className="text-xs text-gray-500">
+          Provide your token to push fixes to your own repositories
+        </p>
       </div>
 
       <button
