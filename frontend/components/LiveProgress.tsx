@@ -63,8 +63,8 @@ const EVENT_CONFIG: Record<string, StepInfo> = {
   BRANCH_CREATED: {
     icon: <GitBranch className="w-4 h-4" />,
     label: "Branch Created",
-    color: "text-purple-400",
-    bgColor: "bg-purple-500/20",
+    color: "text-cyan-400",
+    bgColor: "bg-cyan-500/20",
   },
   ITERATION_START: {
     icon: <Zap className="w-4 h-4" />,
@@ -123,14 +123,14 @@ const EVENT_CONFIG: Record<string, StepInfo> = {
   FIX_GENERATE_START: {
     icon: <Wrench className="w-4 h-4" />,
     label: "Generating Fix",
-    color: "text-pink-400",
-    bgColor: "bg-pink-500/20",
+    color: "text-blue-400",
+    bgColor: "bg-blue-500/20",
   },
   FIX_GENERATE_DONE: {
     icon: <Wrench className="w-4 h-4" />,
     label: "Fix Generated",
-    color: "text-pink-400",
-    bgColor: "bg-pink-500/20",
+    color: "text-blue-400",
+    bgColor: "bg-blue-500/20",
   },
   NO_FIXES_GENERATED: {
     icon: <AlertTriangle className="w-4 h-4" />,
@@ -153,8 +153,8 @@ const EVENT_CONFIG: Record<string, StepInfo> = {
   COMMIT: {
     icon: <GitBranch className="w-4 h-4" />,
     label: "Changes Committed",
-    color: "text-violet-400",
-    bgColor: "bg-violet-500/20",
+    color: "text-sky-400",
+    bgColor: "bg-sky-500/20",
   },
   PUSH: {
     icon: <Upload className="w-4 h-4" />,
@@ -276,10 +276,10 @@ export default function LiveProgress({
           <div className="flex items-center gap-4">
             {isRunning ? (
               <div className="relative">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center animate-pulse">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center animate-pulse">
                   <Loader2 className="w-6 h-6 text-white animate-spin" />
                 </div>
-                <div className="absolute -inset-1 bg-blue-500/20 rounded-xl blur animate-pulse" />
+                <div className="absolute -inset-1 bg-cyan-500/20 rounded-xl blur animate-pulse" />
               </div>
             ) : (
               <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
@@ -314,7 +314,7 @@ export default function LiveProgress({
             className={cn(
               "h-full transition-all duration-500 ease-out",
               isRunning
-                ? "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 animate-pulse"
+                ? "bg-gradient-to-r from-cyan-500 via-blue-500 to-teal-500 animate-pulse"
                 : "bg-green-500",
             )}
             style={{

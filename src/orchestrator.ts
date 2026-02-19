@@ -557,8 +557,8 @@ export class Orchestrator {
   private async monitorCI(branch: string): Promise<boolean> {
     logger.info(`Monitoring GitHub Actions CI for branch: ${branch}`);
 
-    const maxPolls = 30;
-    const pollIntervalMs = 10_000;
+    const maxPolls = 6; // 6 polls x 5 sec = 30 sec max
+    const pollIntervalMs = 5_000;
 
     for (let i = 0; i < maxPolls; i++) {
       await this.sleep(pollIntervalMs);

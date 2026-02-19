@@ -74,7 +74,7 @@ export default function DashboardPage() {
           {isStreaming && streamPayload ? (
             <div className="glass-card">
               <div className="mb-5 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600">
                   <svg
                     className="h-5 w-5 text-white animate-pulse"
                     fill="none"
