@@ -1,0 +1,9 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.flake8]
+max-line-length = 120
+
+[project]
+name = "repo1"
+version = "0.1.0"
