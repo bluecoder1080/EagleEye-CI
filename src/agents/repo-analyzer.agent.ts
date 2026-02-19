@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import simpleGit from "simple-git";
-import { createLogger } from "../utils";
+import { createLogger, config } from "../utils";
 
 const logger = createLogger("RepoAnalyzer");
 
@@ -86,9 +86,24 @@ export class RepoAnalyzerAgent {
       fs.rmSync(targetPath, { recursive: true, force: true });
     }
 
+    // Inject token for private repos or authenticated access
+    let authUrl = repoUrl;
+    const token = config.github.token;
+    if (token) {
+      try {
+        const url = new URL(repoUrl);
+        if (url.hostname === "github.com" && !url.username) {
+          url.username = token;
+          authUrl = url.toString();
+        }
+      } catch {
+        // Invalid URL, use as-is
+      }
+    }
+
     logger.info(`Cloning ${repoUrl} → ${targetPath}`);
     const git = simpleGit();
-    await git.clone(repoUrl, targetPath, ["--depth", "1"]);
+    await git.clone(authUrl, targetPath, ["--depth", "1"]);
     logger.info(`Clone complete: ${targetPath}`);
 
     return targetPath;

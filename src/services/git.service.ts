@@ -1,7 +1,7 @@
 import simpleGit, { SimpleGit, SimpleGitOptions } from "simple-git";
 import path from "path";
 import fs from "fs";
-import { createLogger } from "../utils";
+import { createLogger, config } from "../utils";
 
 const logger = createLogger("GitService");
 
@@ -22,6 +22,26 @@ export class GitService {
     this.git = simpleGit(options);
   }
 
+  /**
+   * Inject GitHub token into a repo URL for authentication.
+   * Converts https://github.com/owner/repo.git → https://<token>@github.com/owner/repo.git
+   */
+  private injectToken(repoUrl: string): string {
+    const token = config.github.token;
+    if (!token) return repoUrl;
+
+    try {
+      const url = new URL(repoUrl);
+      if (url.hostname === "github.com" && !url.username) {
+        url.username = token;
+        return url.toString();
+      }
+    } catch {
+      // Not a valid URL, return as-is
+    }
+    return repoUrl;
+  }
+
   private ensureWorkDir(): void {
     if (!fs.existsSync(this.workDir)) {
       fs.mkdirSync(this.workDir, { recursive: true });
@@ -33,15 +53,20 @@ export class GitService {
     const targetDir = directory ?? path.basename(repoUrl, ".git");
     const fullPath = path.join(this.workDir, targetDir);
 
+    // Use token-injected URL for cloning (enables push later)
+    const authUrl = this.injectToken(repoUrl);
+
     if (fs.existsSync(fullPath)) {
       logger.info(`Repo already exists at ${fullPath}, pulling latest`);
       const localGit = simpleGit(fullPath);
+      // Update remote URL to use token (in case it was cloned without one)
+      await localGit.remote(["set-url", "origin", authUrl]);
       await localGit.pull();
       return fullPath;
     }
 
     logger.info(`Cloning ${repoUrl} into ${fullPath}`);
-    await this.git.clone(repoUrl, fullPath);
+    await this.git.clone(authUrl, fullPath);
     return fullPath;
   }
 
@@ -61,9 +86,17 @@ export class GitService {
     repoPath: string,
     message: string,
     branch: string,
+    repoUrl?: string,
   ): Promise<void> {
     logger.info(`Committing and pushing to "${branch}"`);
     const localGit = simpleGit(repoPath);
+
+    // Ensure remote URL has token for authentication
+    if (repoUrl) {
+      const authUrl = this.injectToken(repoUrl);
+      await localGit.remote(["set-url", "origin", authUrl]);
+    }
+
     await localGit.add(".");
     await localGit.commit(message);
     await localGit.push("origin", branch, ["--set-upstream"]);

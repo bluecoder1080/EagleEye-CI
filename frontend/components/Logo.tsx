@@ -12,10 +12,19 @@ const SIZES = {
   sm: { box: "h-8 w-8", icon: "h-4 w-4", ring: "h-6 w-6", text: "text-lg" },
   md: { box: "h-10 w-10", icon: "h-5 w-5", ring: "h-7 w-7", text: "text-xl" },
   lg: { box: "h-12 w-12", icon: "h-6 w-6", ring: "h-8 w-8", text: "text-2xl" },
-  xl: { box: "h-16 w-16", icon: "h-8 w-8", ring: "h-11 w-11", text: "text-3xl" },
+  xl: {
+    box: "h-16 w-16",
+    icon: "h-8 w-8",
+    ring: "h-11 w-11",
+    text: "text-3xl",
+  },
 };
 
-export default function Logo({ size = "md", showText = true, className }: LogoProps) {
+export default function Logo({
+  size = "md",
+  showText = true,
+  className,
+}: LogoProps) {
   const s = SIZES[size];
 
   return (
@@ -45,7 +54,14 @@ export default function Logo({ size = "md", showText = true, className }: LogoPr
             fill="rgba(255,255,255,0.1)"
           />
           {/* Iris */}
-          <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5" fill="rgba(255,255,255,0.15)" />
+          <circle
+            cx="12"
+            cy="12"
+            r="4"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            fill="rgba(255,255,255,0.15)"
+          />
           {/* Pupil with gradient-like fill */}
           <circle cx="12" cy="12" r="2" fill="currentColor" />
           {/* Highlight */}

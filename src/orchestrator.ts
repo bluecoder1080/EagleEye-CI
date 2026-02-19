@@ -189,7 +189,7 @@ export class Orchestrator {
               this.addTimeline(timeline, "COMMIT", commitMsg);
 
               if (!options.dryRun) {
-                await this.pushBranch(repoPath, branchName);
+                await this.pushBranch(repoPath, branchName, options.repoUrl);
                 this.addTimeline(timeline, "PUSH", branchName);
               }
               continue; // try again with the fix applied
@@ -249,7 +249,7 @@ export class Orchestrator {
 
       // 2g. Push (unless dry-run)
       if (!options.dryRun) {
-        await this.pushBranch(repoPath, branchName);
+        await this.pushBranch(repoPath, branchName, options.repoUrl);
         this.addTimeline(timeline, "PUSH", branchName);
 
         // 2h. Wait for CI and check result
@@ -512,12 +512,32 @@ export class Orchestrator {
     }
   }
 
-  private async pushBranch(repoPath: string, branch: string): Promise<void> {
+  private async pushBranch(
+    repoPath: string,
+    branch: string,
+    repoUrl: string,
+  ): Promise<void> {
     if (branch === "main" || branch === "master") {
       throw new Error("Refusing to push to main/master branch");
     }
 
     const git = simpleGit(repoPath);
+
+    // Inject GitHub token into remote URL for authentication
+    const token = config.github.token;
+    if (token && repoUrl) {
+      try {
+        const url = new URL(repoUrl);
+        if (url.hostname === "github.com" && !url.username) {
+          url.username = token;
+          await git.remote(["set-url", "origin", url.toString()]);
+          logger.info("Injected token into remote URL");
+        }
+      } catch {
+        logger.warn("Could not inject token into remote URL");
+      }
+    }
+
     await git.push("origin", branch, ["--set-upstream", "--force"]);
     logger.info(`Pushed branch: ${branch}`);
   }
