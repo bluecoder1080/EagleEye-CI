@@ -200,13 +200,17 @@ export class Orchestrator {
               this.addTimeline(timeline, "COMMIT", commitMsg);
 
               if (!options.dryRun) {
-                await this.pushBranch(
+                const pushSuccess = await this.pushBranch(
                   repoPath,
                   branchName,
                   options.repoUrl,
                   options.githubToken,
                 );
-                this.addTimeline(timeline, "PUSH", branchName);
+                if (pushSuccess) {
+                  this.addTimeline(timeline, "PUSH", branchName);
+                } else {
+                  this.addTimeline(timeline, "PUSH_FAILED", "No token or push error");
+                }
               }
               continue; // try again with the fix applied
             }
@@ -265,22 +269,26 @@ export class Orchestrator {
 
       // 2g. Push (unless dry-run)
       if (!options.dryRun) {
-        await this.pushBranch(
+        const pushSuccess = await this.pushBranch(
           repoPath,
           branchName,
           options.repoUrl,
           options.githubToken,
         );
-        this.addTimeline(timeline, "PUSH", branchName);
+        if (pushSuccess) {
+          this.addTimeline(timeline, "PUSH", branchName);
 
-        // 2h. Wait for CI and check result
-        this.addTimeline(timeline, "CI_MONITOR_START");
-        const ciPassed = await this.monitorCI(branchName);
-        this.addTimeline(timeline, ciPassed ? "CI_PASSED" : "CI_FAILED");
+          // 2h. Wait for CI and check result (only if push succeeded)
+          this.addTimeline(timeline, "CI_MONITOR_START");
+          const ciPassed = await this.monitorCI(branchName);
+          this.addTimeline(timeline, ciPassed ? "CI_PASSED" : "CI_FAILED");
 
-        if (ciPassed) {
-          passed = true;
-          break;
+          if (ciPassed) {
+            passed = true;
+            break;
+          }
+        } else {
+          this.addTimeline(timeline, "PUSH_FAILED", "No token or push error - check GitHub token permissions");
         }
       }
     }
@@ -545,12 +553,17 @@ export class Orchestrator {
     branch: string,
     repoUrl: string,
     customToken?: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const git = simpleGit(repoPath);
 
     // Inject GitHub token into remote URL for authentication
     // Prefer user-provided token over default config token
     const token = customToken || config.github.token;
+    if (!token) {
+      logger.error("No GitHub token provided - cannot push");
+      return false;
+    }
+
     if (token && repoUrl) {
       try {
         const url = new URL(repoUrl);
@@ -559,13 +572,19 @@ export class Orchestrator {
           await git.remote(["set-url", "origin", url.toString()]);
           logger.info("Injected token into remote URL");
         }
-      } catch {
-        logger.warn("Could not inject token into remote URL");
+      } catch (err) {
+        logger.warn(`Could not inject token into remote URL: ${err}`);
       }
     }
 
-    await git.push("origin", branch, ["--set-upstream", "--force"]);
-    logger.info(`Pushed branch: ${branch}`);
+    try {
+      await git.push("origin", branch, ["--set-upstream", "--force"]);
+      logger.info(`Pushed branch: ${branch}`);
+      return true;
+    } catch (err) {
+      logger.error(`Failed to push branch ${branch}: ${err instanceof Error ? err.message : err}`);
+      return false;
+    }
   }
 
   // ── CI monitor ─────────────────────────────────────────────

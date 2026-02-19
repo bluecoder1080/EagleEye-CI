@@ -163,6 +163,12 @@ const EVENT_CONFIG: Record<string, StepInfo> = {
     color: "text-emerald-400",
     bgColor: "bg-emerald-500/20",
   },
+  PUSH_FAILED: {
+    icon: <XCircle className="w-4 h-4" />,
+    label: "Push Failed",
+    color: "text-red-400",
+    bgColor: "bg-red-500/20",
+  },
   CI_MONITOR_START: {
     icon: <Activity className="w-4 h-4" />,
     label: "Monitoring CI",
