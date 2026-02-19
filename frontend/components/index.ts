@@ -12,3 +12,4 @@ export { default as ScoreBreakdown } from "./ScoreBreakdown";
 export { default as FixesTable } from "./FixesTable";
 export { default as CICDTimeline } from "./CICDTimeline";
 export { default as LoadingSpinner } from "./LoadingSpinner";
+export { default as LiveProgress } from "./LiveProgress";

@@ -3,8 +3,13 @@
 import { useState } from "react";
 import { useAgentStore } from "@/store/useAgentStore";
 import LoadingSpinner from "./LoadingSpinner";
+import type { RunAgentRequest } from "@/types";
 
-export default function RunTriggerForm() {
+interface RunTriggerFormProps {
+  onStartStream?: (payload: RunAgentRequest) => void;
+}
+
+export default function RunTriggerForm({ onStartStream }: RunTriggerFormProps) {
   const [repoUrl, setRepoUrl] = useState("");
   const [teamName, setTeamName] = useState("");
   const [leaderName, setLeaderName] = useState("");
@@ -16,12 +21,20 @@ export default function RunTriggerForm() {
     if (!repoUrl.trim() || !teamName.trim() || !leaderName.trim() || isRunning)
       return;
     clearError();
-    await startRun({
+
+    const payload: RunAgentRequest = {
       repoUrl: repoUrl.trim(),
       teamName: teamName.trim(),
       leaderName: leaderName.trim(),
       retryLimit,
-    });
+    };
+
+    // Use streaming if callback provided
+    if (onStartStream) {
+      onStartStream(payload);
+    } else {
+      await startRun(payload);
+    }
   }
 
   const isValid = repoUrl.trim() && teamName.trim() && leaderName.trim();

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useAgentStore } from "@/store/useAgentStore";
 import {
   StatsGrid,
@@ -9,11 +10,47 @@ import {
   ScoreBreakdown,
   FixesTable,
   CICDTimeline,
+  LiveProgress,
 } from "@/components";
 import { formatDuration } from "@/lib/utils";
+import type { RunAgentRequest, AgentRun } from "@/types";
 
 export default function DashboardPage() {
-  const { runs, stats, result, isRunning } = useAgentStore();
+  const { runs, stats, result, isRunning, addRun, setActiveRun } =
+    useAgentStore();
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamPayload, setStreamPayload] = useState<RunAgentRequest | null>(
+    null,
+  );
+  const [streamError, setStreamError] = useState<string | null>(null);
+
+  const handleStartStream = (payload: RunAgentRequest) => {
+    setStreamPayload(payload);
+    setStreamError(null);
+    setIsStreaming(true);
+  };
+
+  const handleStreamComplete = (resultData: AgentRun) => {
+    const run: AgentRun = {
+      ...resultData,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+    };
+    addRun(run);
+    setActiveRun(run);
+    setIsStreaming(false);
+    setStreamPayload(null);
+  };
+
+  const handleStreamError = (error: string) => {
+    setStreamError(error);
+    setIsStreaming(false);
+  };
+
+  const handleCancelStream = () => {
+    setIsStreaming(false);
+    setStreamPayload(null);
+  };
 
   return (
     <div className="page-container space-y-8 animate-fade-in">
@@ -34,36 +71,77 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-2 space-y-6">
-          <div className="glass-card">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600/20">
-                <svg
-                  className="h-5 w-5 text-brand-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
+          {isStreaming && streamPayload ? (
+            <div className="glass-card">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                  <svg
+                    className="h-5 w-5 text-white animate-pulse"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-white">
+                    Agent Running
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Live progress from the autonomous agent
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white">
-                  Trigger Healing Run
-                </h2>
-                <p className="text-xs text-gray-500">
-                  Configure and launch the autonomous agent
-                </p>
-              </div>
+              <LiveProgress
+                payload={streamPayload}
+                onComplete={handleStreamComplete}
+                onError={handleStreamError}
+                onCancel={handleCancelStream}
+              />
             </div>
-            <RunTriggerForm />
-          </div>
+          ) : (
+            <div className="glass-card">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600/20">
+                  <svg
+                    className="h-5 w-5 text-brand-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-white">
+                    Trigger Healing Run
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Configure and launch the autonomous agent
+                  </p>
+                </div>
+              </div>
+              {streamError && (
+                <div className="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-sm">
+                  {streamError}
+                </div>
+              )}
+              <RunTriggerForm onStartStream={handleStartStream} />
+            </div>
+          )}
 
-          {result && (
+          {result && !isStreaming && (
             <>
               <RunSummary run={result} />
               <ScoreBreakdown run={result} />
@@ -132,7 +210,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-3">
           <div className="flex items-center justify-between mb-4">
             <h2 className="section-title">Recent Runs</h2>
-            {isRunning && (
+            {(isRunning || isStreaming) && (
               <span className="inline-flex items-center gap-2 rounded-full bg-brand-500/10 px-3 py-1 text-xs font-medium text-brand-400 border border-brand-500/20">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-400 animate-pulse" />
                 Agent active

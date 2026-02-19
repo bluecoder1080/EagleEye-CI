@@ -4,6 +4,7 @@ export const API_URL =
 export const ENDPOINTS = {
   health: `${API_URL}/health`,
   runAgent: `${API_URL}/api/run-agent`,
+  runAgentStream: `${API_URL}/api/run-agent-stream`,
   analyze: `${API_URL}/api/analyze`,
 } as const;
 

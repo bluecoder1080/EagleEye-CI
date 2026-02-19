@@ -17,12 +17,15 @@ const logger = createLogger("Orchestrator");
 
 // ── Public types ──────────────────────────────────────────────
 
+export type ProgressCallback = (entry: TimelineEntry) => void;
+
 export interface OrchestratorOptions {
   repoUrl: string;
   teamName?: string;
   leaderName?: string;
   retryLimit?: number;
   dryRun?: boolean;
+  onProgress?: ProgressCallback;
 }
 
 export interface FixRecord {
@@ -62,6 +65,7 @@ export class Orchestrator {
   private fixer: FixGeneratorAgent;
   private docker: DockerService;
   private github: GitHubService;
+  private currentProgress?: ProgressCallback;
 
   constructor() {
     this.analyzer = new RepoAnalyzerAgent();
@@ -80,6 +84,9 @@ export class Orchestrator {
   }
 
   async run(options: OrchestratorOptions): Promise<OrchestratorResult> {
+    // Store progress callback for this run
+    this.currentProgress = options.onProgress;
+
     const startTime = Date.now();
     const timeline: TimelineEntry[] = [];
     const allFixes: FixRecord[] = [];
@@ -289,6 +296,9 @@ export class Orchestrator {
     } catch {
       /* best-effort */
     }
+
+    // Clear progress callback
+    this.currentProgress = undefined;
 
     return result;
   }
@@ -633,11 +643,15 @@ export class Orchestrator {
     event: string,
     detail?: string,
   ): void {
-    timeline.push({
+    const entry: TimelineEntry = {
       timestamp: new Date().toISOString(),
       event,
       detail,
-    });
+    };
+    timeline.push(entry);
+    if (this.currentProgress) {
+      this.currentProgress(entry);
+    }
   }
 
   private sleep(ms: number): Promise<void> {
