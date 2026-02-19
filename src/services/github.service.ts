@@ -161,7 +161,10 @@ export class GitHubService {
     let repo: string;
     try {
       const url = new URL(repoUrl);
-      const parts = url.pathname.replace(/^\//, "").replace(/\.git$/, "").split("/");
+      const parts = url.pathname
+        .replace(/^\//, "")
+        .replace(/\.git$/, "")
+        .split("/");
       if (parts.length < 2) throw new Error("Invalid repo URL");
       owner = parts[0];
       repo = parts[1];
@@ -185,7 +188,9 @@ export class GitHubService {
       const { data: repoData } = await client.repos.get({ owner, repo });
       const baseBranch = repoData.default_branch;
 
-      logger.info(`Creating PR: ${branch} -> ${baseBranch} in ${owner}/${repo}`);
+      logger.info(
+        `Creating PR: ${branch} -> ${baseBranch} in ${owner}/${repo}`,
+      );
 
       const { data: pr } = await client.pulls.create({
         owner,

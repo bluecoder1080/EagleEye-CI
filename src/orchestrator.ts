@@ -96,11 +96,11 @@ export class Orchestrator {
     const teamName = options.teamName || config.teamName;
     const leaderName = options.leaderName || config.leaderName;
     const retryLimit = options.retryLimit || config.retryLimit;
-    const branchName = this.buildBranchName(teamName, leaderName);
+    // branchName will be set after clone to the default branch
 
     this.addTimeline(timeline, "ORCHESTRATOR_START", `repo=${options.repoUrl}`);
     logger.info(`Orchestrator starting for ${options.repoUrl}`);
-    logger.info(`Branch: ${branchName} | Retry limit: ${retryLimit}`);
+    logger.info(`Retry limit: ${retryLimit}`);
 
     // ── Step 1: Clone & analyse ──────────────────────────────
     this.addTimeline(timeline, "CLONE_START");
@@ -114,7 +114,7 @@ export class Orchestrator {
         repoUrl: options.repoUrl,
         teamName,
         leaderName,
-        branchName,
+        branchName: "unknown",
         status: "FAILED",
         startTime,
         timeline,
@@ -124,10 +124,12 @@ export class Orchestrator {
     }
     this.addTimeline(timeline, "CLONE_DONE", `lang=${analysis.language}`);
 
-    // Create the fix branch (never push to main)
+    // Get the current default branch (main/master) - push directly to it
     const repoPath = analysis.localPath;
-    await this.prepareBranch(repoPath, branchName);
-    this.addTimeline(timeline, "BRANCH_CREATED", branchName);
+    const git = simpleGit(repoPath);
+    const currentBranch = (await git.revparse(["--abbrev-ref", "HEAD"])).trim();
+    const branchName = currentBranch || "main";
+    logger.info(`Using default branch: ${branchName}`);
 
     // ── Step 2–4: Retry loop ─────────────────────────────────
     let iteration = 0;
@@ -198,7 +200,12 @@ export class Orchestrator {
               this.addTimeline(timeline, "COMMIT", commitMsg);
 
               if (!options.dryRun) {
-                await this.pushBranch(repoPath, branchName, options.repoUrl, options.githubToken);
+                await this.pushBranch(
+                  repoPath,
+                  branchName,
+                  options.repoUrl,
+                  options.githubToken,
+                );
                 this.addTimeline(timeline, "PUSH", branchName);
               }
               continue; // try again with the fix applied
@@ -258,7 +265,12 @@ export class Orchestrator {
 
       // 2g. Push (unless dry-run)
       if (!options.dryRun) {
-        await this.pushBranch(repoPath, branchName, options.repoUrl, options.githubToken);
+        await this.pushBranch(
+          repoPath,
+          branchName,
+          options.repoUrl,
+          options.githubToken,
+        );
         this.addTimeline(timeline, "PUSH", branchName);
 
         // 2h. Wait for CI and check result
@@ -273,24 +285,8 @@ export class Orchestrator {
       }
     }
 
-    // ── Create Pull Request ──────────────────────────────────
-    let pullRequestUrl: string | undefined;
-    if (!options.dryRun && allFixes.length > 0) {
-      this.addTimeline(timeline, "PR_CREATE_START");
-      const prResult = await this.github.createPullRequest({
-        repoUrl: options.repoUrl,
-        branch: branchName,
-        title: `[EagleEye CI] Automated fixes for ${branchName}`,
-        body: this.buildPRBody(allFixes, passed),
-        token: options.githubToken,
-      });
-      if (prResult) {
-        pullRequestUrl = prResult.url;
-        this.addTimeline(timeline, "PR_CREATED", prResult.url);
-      } else {
-        this.addTimeline(timeline, "PR_CREATE_FAILED", "Could not create PR");
-      }
-    }
+    // Skip PR creation - pushing directly to main
+    const pullRequestUrl: string | undefined = undefined;
 
     const status = passed ? "PASSED" : "FAILED";
     this.addTimeline(timeline, "ORCHESTRATOR_DONE", status);
@@ -550,10 +546,6 @@ export class Orchestrator {
     repoUrl: string,
     customToken?: string,
   ): Promise<void> {
-    if (branch === "main" || branch === "master") {
-      throw new Error("Refusing to push to main/master branch");
-    }
-
     const git = simpleGit(repoPath);
 
     // Inject GitHub token into remote URL for authentication
