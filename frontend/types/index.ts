@@ -37,6 +37,7 @@ export interface AgentRun {
   formattedFailures: string[];
   timeline: TimelineEntry[];
   createdAt: string;
+  pullRequestUrl?: string;
 }
 
 export interface HealthResponse {

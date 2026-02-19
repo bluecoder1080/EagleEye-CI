@@ -142,4 +142,66 @@ export class GitHubService {
       body,
     });
   }
+
+  /**
+   * Create a Pull Request from a branch to main/master
+   * Supports custom token for user-owned repos
+   */
+  async createPullRequest(options: {
+    repoUrl: string;
+    branch: string;
+    title: string;
+    body: string;
+    token?: string;
+  }): Promise<{ number: number; url: string } | null> {
+    const { repoUrl, branch, title, body, token } = options;
+
+    // Parse owner/repo from URL
+    let owner: string;
+    let repo: string;
+    try {
+      const url = new URL(repoUrl);
+      const parts = url.pathname.replace(/^\//, "").replace(/\.git$/, "").split("/");
+      if (parts.length < 2) throw new Error("Invalid repo URL");
+      owner = parts[0];
+      repo = parts[1];
+    } catch {
+      logger.error(`Could not parse repo URL: ${repoUrl}`);
+      return null;
+    }
+
+    // Use custom token or default
+    const authToken = token || config.github.token;
+    if (!authToken) {
+      logger.warn("No GitHub token available for PR creation");
+      return null;
+    }
+
+    try {
+      const Octokit = await getOctokit();
+      const client = new Octokit({ auth: authToken });
+
+      // Get default branch
+      const { data: repoData } = await client.repos.get({ owner, repo });
+      const baseBranch = repoData.default_branch;
+
+      logger.info(`Creating PR: ${branch} -> ${baseBranch} in ${owner}/${repo}`);
+
+      const { data: pr } = await client.pulls.create({
+        owner,
+        repo,
+        title,
+        body,
+        head: branch,
+        base: baseBranch,
+      });
+
+      logger.info(`PR created: #${pr.number} - ${pr.html_url}`);
+      return { number: pr.number, url: pr.html_url };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error(`Failed to create PR: ${msg}`);
+      return null;
+    }
+  }
 }

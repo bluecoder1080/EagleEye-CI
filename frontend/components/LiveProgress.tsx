@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Rocket,
   FileCode,
+  GitPullRequest,
 } from "lucide-react";
 
 interface LiveProgressProps {
@@ -177,6 +178,24 @@ const EVENT_CONFIG: Record<string, StepInfo> = {
   CI_FAILED: {
     icon: <XCircle className="w-4 h-4" />,
     label: "CI Failed",
+    color: "text-red-400",
+    bgColor: "bg-red-500/20",
+  },
+  PR_CREATE_START: {
+    icon: <GitPullRequest className="w-4 h-4" />,
+    label: "Creating Pull Request",
+    color: "text-cyan-400",
+    bgColor: "bg-cyan-500/20",
+  },
+  PR_CREATED: {
+    icon: <GitPullRequest className="w-4 h-4" />,
+    label: "Pull Request Created",
+    color: "text-green-400",
+    bgColor: "bg-green-500/20",
+  },
+  PR_CREATE_FAILED: {
+    icon: <GitPullRequest className="w-4 h-4" />,
+    label: "PR Creation Failed",
     color: "text-red-400",
     bgColor: "bg-red-500/20",
   },
