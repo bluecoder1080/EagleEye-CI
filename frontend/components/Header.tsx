@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from "@clerk/nextjs";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { APP_NAME } from "@/lib/constants";
 import { checkHealth } from "@/lib/api";
@@ -118,6 +125,30 @@ export default function Header() {
           />
           {statusText}
         </div>
+
+        {/* Clerk Auth */}
+        <SignedOut>
+          <SignInButton mode="modal">
+            <button className="rounded-lg border border-brand-500/30 bg-brand-600/20 px-3 py-1.5 text-xs font-medium text-brand-400 transition-colors hover:bg-brand-600/40">
+              Sign In
+            </button>
+          </SignInButton>
+          <SignUpButton mode="modal">
+            <button className="hidden rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brand-700 sm:block">
+              Sign Up
+            </button>
+          </SignUpButton>
+        </SignedOut>
+        <SignedIn>
+          <UserButton
+            afterSignOutUrl="/"
+            appearance={{
+              elements: {
+                avatarBox: "h-8 w-8",
+              },
+            }}
+          />
+        </SignedIn>
       </div>
     </header>
   );
