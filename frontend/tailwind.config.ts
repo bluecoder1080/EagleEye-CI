@@ -23,20 +23,28 @@ const config: Config = {
           950: "#142757",
         },
         surface: {
-          DEFAULT: "#0f1117",
-          raised: "#161921",
-          overlay: "#1c1f2b",
-          border: "#2a2d3a",
+          DEFAULT: "#0a0b0f",
+          raised: "#12131a",
+          overlay: "#1a1b26",
+          border: "#22243a",
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "Fira Code", "monospace"],
+        sans: [
+          '"Inter"',
+          '"SF Pro Display"',
+          "system-ui",
+          "-apple-system",
+          "sans-serif",
+        ],
+        mono: ['"JetBrains Mono"', '"Fira Code"', "monospace"],
+        display: ['"Inter"', '"SF Pro Display"', "system-ui", "sans-serif"],
       },
       animation: {
         "pulse-slow": "pulse 3s ease-in-out infinite",
-        "fade-in": "fadeIn 0.3s ease-out",
-        "slide-up": "slideUp 0.3s ease-out",
+        "fade-in": "fadeIn 0.5s ease-out",
+        "slide-up": "slideUp 0.5s ease-out",
+        "float": "float 6s ease-in-out infinite",
       },
       keyframes: {
         fadeIn: {
@@ -44,8 +52,12 @@ const config: Config = {
           "100%": { opacity: "1" },
         },
         slideUp: {
-          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "0%": { opacity: "0", transform: "translateY(16px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-8px)" },
         },
       },
     },

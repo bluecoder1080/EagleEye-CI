@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   {
     label: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: (
       <svg
         className="h-5 w-5"
@@ -27,7 +27,7 @@ const NAV_ITEMS = [
   },
   {
     label: "Runs",
-    href: "/runs",
+    href: "/dashboard/runs",
     icon: (
       <svg
         className="h-5 w-5"
@@ -46,7 +46,7 @@ const NAV_ITEMS = [
   },
   {
     label: "Settings",
-    href: "/settings",
+    href: "/dashboard/settings",
     icon: (
       <svg
         className="h-5 w-5"
@@ -93,8 +93,8 @@ export default function Sidebar() {
         <nav className="flex flex-1 flex-col gap-1 p-3">
           {NAV_ITEMS.map((item) => {
             const isActive =
-              item.href === "/"
-                ? pathname === "/"
+              item.href === "/dashboard"
+                ? pathname === "/dashboard"
                 : pathname.startsWith(item.href);
 
             return (

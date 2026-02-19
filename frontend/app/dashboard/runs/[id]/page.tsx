@@ -31,7 +31,7 @@ export default function RunDetailPage() {
           </svg>
           <p className="mt-4 text-gray-400">Run not found</p>
           <button
-            onClick={() => router.push("/runs")}
+            onClick={() => router.push("/dashboard/runs")}
             className="btn-secondary mt-4"
           >
             Back to Runs
@@ -45,7 +45,7 @@ export default function RunDetailPage() {
     <div className="page-container space-y-6 animate-fade-in">
       <div className="flex items-center gap-3">
         <button
-          onClick={() => router.push("/runs")}
+          onClick={() => router.push("/dashboard/runs")}
           className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white"
         >
           <svg

@@ -1,5 +1,6 @@
 export { default as Header } from "./Header";
 export { default as Sidebar } from "./Sidebar";
+export { default as Logo } from "./Logo";
 export { StatusBadge, BugTypeBadge } from "./StatusBadge";
 export { default as RunCard } from "./RunCard";
 export { default as Timeline } from "./Timeline";
