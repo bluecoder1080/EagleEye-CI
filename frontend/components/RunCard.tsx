@@ -16,7 +16,7 @@ interface RunCardProps {
 export default function RunCard({ run }: RunCardProps) {
   return (
     <Link
-      href={`/runs/${run.id}`}
+      href={`/dashboard/runs/${run.id}`}
       className="group block rounded-xl border border-surface-border bg-surface-raised p-4 transition-all hover:border-brand-600/40 hover:bg-surface-overlay"
     >
       <div className="flex items-start justify-between gap-3">
