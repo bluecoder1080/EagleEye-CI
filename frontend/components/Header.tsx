@@ -98,12 +98,7 @@ export default function Header() {
           {statusText}
         </div>
 
-        <Link
-          href="/dashboard"
-          className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brand-700"
-        >
-          Dashboard
-        </Link>
+        {/* Auth placeholder */}
       </div>
     </header>
   );

@@ -188,7 +188,7 @@ export default function LandingPage() {
             href="/dashboard"
             className="group relative rounded-xl bg-brand-600 px-8 py-3.5 text-base font-semibold text-white shadow-xl shadow-brand-600/25 transition-all hover:bg-brand-500 hover:shadow-brand-500/30 hover:-translate-y-0.5"
           >
-            Open Dashboard
+            Start Healing Free
             <span className="ml-2 inline-block transition-transform group-hover:translate-x-1">
               →
             </span>
@@ -275,7 +275,7 @@ export default function LandingPage() {
               href="/dashboard"
               className="inline-block rounded-xl bg-brand-600 px-8 py-3.5 text-base font-semibold text-white shadow-xl shadow-brand-600/25 transition-all hover:bg-brand-500 hover:shadow-brand-500/30 hover:-translate-y-0.5"
             >
-              Go to Dashboard →
+              Get Started — It's Free
             </Link>
           </div>
         </div>
