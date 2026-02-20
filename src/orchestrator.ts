@@ -199,7 +199,11 @@ export class Orchestrator {
               await this.commitChanges(repoPath, commitMsg, branchName);
               this.addTimeline(timeline, "COMMIT", commitMsg);
 
-              this.addTimeline(timeline, "PUSH_ATTEMPT", `token=${options.githubToken ? "provided" : "missing"}`);
+              this.addTimeline(
+                timeline,
+                "PUSH_ATTEMPT",
+                `token=${options.githubToken ? "provided" : "missing"}`,
+              );
               if (!options.dryRun) {
                 const pushSuccess = await this.pushBranch(
                   repoPath,
@@ -273,7 +277,11 @@ export class Orchestrator {
       this.addTimeline(timeline, "COMMIT", commitMsg);
 
       // 2g. Push (unless dry-run)
-      this.addTimeline(timeline, "PUSH_ATTEMPT", `token=${options.githubToken ? "provided" : "missing"}`);
+      this.addTimeline(
+        timeline,
+        "PUSH_ATTEMPT",
+        `token=${options.githubToken ? "provided" : "missing"}`,
+      );
       if (!options.dryRun) {
         const pushSuccess = await this.pushBranch(
           repoPath,
