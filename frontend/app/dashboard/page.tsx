@@ -132,7 +132,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-3">
           <div className="flex items-center justify-between mb-4">
             <h2 className="section-title">Recent Runs</h2>
-            {(isRunning || isStreaming) && (
+            {isRunning && (
               <span className="inline-flex items-center gap-2 rounded-full bg-brand-500/10 px-3 py-1 text-xs font-medium text-brand-400 border border-brand-500/20">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-400 animate-pulse" />
                 Agent active

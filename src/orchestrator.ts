@@ -233,6 +233,7 @@ export class Orchestrator {
                   if (fallback.pushed) {
                     this.addTimeline(timeline, "PUSH", "Pushed via fix branch");
                     if (fallback.prUrl) {
+                      pullRequestUrl = fallback.prUrl;
                       this.addTimeline(timeline, "PR_CREATED", fallback.prUrl);
                     }
                   } else {
@@ -718,7 +719,15 @@ export class Orchestrator {
     }
 
     const token = await this.injectTokenIntoRemote(git, repoUrl, customToken);
-    if (!token) return { pushed: false };
+    if (!token) {
+      // Switch back to default branch before returning
+      try {
+        await git.checkout(defaultBranch);
+      } catch {
+        /* best-effort */
+      }
+      return { pushed: false };
+    }
 
     try {
       await git.push("origin", fixBranch, ["--set-upstream", "--force"]);
@@ -727,6 +736,12 @@ export class Orchestrator {
       logger.error(
         `Failed to push fix branch: ${err instanceof Error ? err.message : err}`,
       );
+      // Switch back to default branch before returning
+      try {
+        await git.checkout(defaultBranch);
+      } catch {
+        /* best-effort */
+      }
       return { pushed: false };
     }
 

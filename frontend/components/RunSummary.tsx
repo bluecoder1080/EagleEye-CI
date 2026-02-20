@@ -77,6 +77,30 @@ export default function RunSummary({ run }: RunSummaryProps) {
           mono
           full
         />
+        {run.pullRequestUrl && (
+          <SummaryField
+            icon={
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
+              </svg>
+            }
+            label="Pull Request"
+            value={run.pullRequestUrl}
+            mono
+            full
+            href={run.pullRequestUrl}
+          />
+        )}
         <SummaryField
           icon={
             <svg
@@ -162,12 +186,14 @@ function SummaryField({
   value,
   mono = false,
   full = false,
+  href,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   mono?: boolean;
   full?: boolean;
+  href?: string;
 }) {
   return (
     <div
@@ -179,11 +205,22 @@ function SummaryField({
           {label}
         </span>
       </div>
-      <p
-        className={`text-sm text-white truncate ${mono ? "font-mono text-xs" : "font-medium"}`}
-      >
-        {value}
-      </p>
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`text-sm text-brand-400 hover:text-brand-300 truncate block underline underline-offset-2 ${mono ? "font-mono text-xs" : "font-medium"}`}
+        >
+          {value}
+        </a>
+      ) : (
+        <p
+          className={`text-sm text-white truncate ${mono ? "font-mono text-xs" : "font-medium"}`}
+        >
+          {value}
+        </p>
+      )}
     </div>
   );
 }

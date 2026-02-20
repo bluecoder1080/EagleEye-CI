@@ -26,14 +26,15 @@ export class GitService {
    * Inject GitHub token into a repo URL for authentication.
    * Converts https://github.com/owner/repo.git → https://<token>@github.com/owner/repo.git
    */
-  private injectToken(repoUrl: string): string {
-    const token = config.github.token;
+  private injectToken(repoUrl: string, customToken?: string): string {
+    const token = customToken || config.github.token;
     if (!token) return repoUrl;
 
     try {
       const url = new URL(repoUrl);
       if (url.hostname === "github.com" && !url.username) {
-        url.username = token;
+        url.username = "x-access-token";
+        url.password = token;
         return url.toString();
       }
     } catch {
