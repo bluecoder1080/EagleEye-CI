@@ -45,10 +45,10 @@ export class RepoAnalyzerAgent {
     }
   }
 
-  async analyze(repoUrl: string): Promise<RepoAnalysis> {
+  async analyze(repoUrl: string, customToken?: string): Promise<RepoAnalysis> {
     logger.info(`Analyzing repository: ${repoUrl}`);
 
-    const localPath = await this.cloneRepo(repoUrl);
+    const localPath = await this.cloneRepo(repoUrl, customToken);
     const files = this.listTopLevelFiles(localPath);
     const language = this.detectLanguage(files);
     const testCommand = this.detectTestCommand(localPath, language, files);
@@ -75,7 +75,7 @@ export class RepoAnalyzerAgent {
     return analysis;
   }
 
-  private async cloneRepo(repoUrl: string): Promise<string> {
+  private async cloneRepo(repoUrl: string, customToken?: string): Promise<string> {
     const repoName = this.extractRepoName(repoUrl);
     const timestamp = Date.now();
     const dirName = `${repoName}-${timestamp}`;
@@ -88,13 +88,15 @@ export class RepoAnalyzerAgent {
 
     // Inject token for private repos or authenticated access
     let authUrl = repoUrl;
-    const token = config.github.token;
+    const token = customToken || config.github.token;
     if (token) {
       try {
         const url = new URL(repoUrl);
-        if (url.hostname === "github.com" && !url.username) {
-          url.username = token;
+        if (url.hostname === "github.com") {
+          url.username = "x-access-token";
+          url.password = token;
           authUrl = url.toString();
+          logger.info("Using x-access-token for clone authentication");
         }
       } catch {
         // Invalid URL, use as-is
@@ -103,7 +105,7 @@ export class RepoAnalyzerAgent {
 
     logger.info(`Cloning ${repoUrl} → ${targetPath}`);
     const git = simpleGit();
-    await git.clone(authUrl, targetPath, ["--depth", "1"]);
+    await git.clone(authUrl, targetPath);
     logger.info(`Clone complete: ${targetPath}`);
 
     return targetPath;

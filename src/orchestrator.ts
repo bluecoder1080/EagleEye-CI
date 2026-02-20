@@ -106,7 +106,7 @@ export class Orchestrator {
     this.addTimeline(timeline, "CLONE_START");
     let analysis: RepoAnalysis;
     try {
-      analysis = await this.analyzer.analyze(options.repoUrl);
+      analysis = await this.analyzer.analyze(options.repoUrl, options.githubToken);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.addTimeline(timeline, "CLONE_FAILED", msg);
@@ -201,7 +201,11 @@ export class Orchestrator {
               this.addTimeline(timeline, "COMMIT", commitMsg);
 
               if (!options.dryRun) {
-                this.addTimeline(timeline, "PUSH_ATTEMPT", `branch=${branchName}`);
+                this.addTimeline(
+                  timeline,
+                  "PUSH_ATTEMPT",
+                  `branch=${branchName}`,
+                );
                 let pushSuccess = await this.pushBranch(
                   repoPath,
                   branchName,
@@ -212,7 +216,11 @@ export class Orchestrator {
                   this.addTimeline(timeline, "PUSH", `Pushed to ${branchName}`);
                 } else {
                   // Fallback: push via fix branch + PR
-                  this.addTimeline(timeline, "PUSH_FALLBACK", "Trying fix branch + PR");
+                  this.addTimeline(
+                    timeline,
+                    "PUSH_FALLBACK",
+                    "Trying fix branch + PR",
+                  );
                   const fallback = await this.pushViaFixBranch(
                     repoPath,
                     options.repoUrl,
@@ -225,7 +233,11 @@ export class Orchestrator {
                       this.addTimeline(timeline, "PR_CREATED", fallback.prUrl);
                     }
                   } else {
-                    this.addTimeline(timeline, "PUSH_FAILED", "Could not push - check token permissions");
+                    this.addTimeline(
+                      timeline,
+                      "PUSH_FAILED",
+                      "Could not push - check token permissions",
+                    );
                   }
                 }
               }
@@ -293,13 +305,16 @@ export class Orchestrator {
           options.repoUrl,
           options.githubToken,
         );
-        let pullRequestUrl: string | undefined;
 
         if (pushSuccess) {
           this.addTimeline(timeline, "PUSH", `Pushed to ${branchName}`);
         } else {
           // Fallback: push via fix branch + PR
-          this.addTimeline(timeline, "PUSH_FALLBACK", "Push to main failed - trying fix branch + PR");
+          this.addTimeline(
+            timeline,
+            "PUSH_FALLBACK",
+            "Push to main failed - trying fix branch + PR",
+          );
           const fallback = await this.pushViaFixBranch(
             repoPath,
             options.repoUrl,
@@ -314,7 +329,11 @@ export class Orchestrator {
               this.addTimeline(timeline, "PR_CREATED", fallback.prUrl);
             }
           } else {
-            this.addTimeline(timeline, "PUSH_FAILED", "Could not push - check token permissions");
+            this.addTimeline(
+              timeline,
+              "PUSH_FAILED",
+              "Could not push - check token permissions",
+            );
           }
         }
 
@@ -577,16 +596,23 @@ export class Orchestrator {
     branch: string,
   ): Promise<boolean> {
     const git = simpleGit(repoPath);
-    
+
     // Check if there are changes to commit
     const status = await git.status();
-    logger.info(`Git status: modified=${status.modified.length}, created=${status.created.length}, deleted=${status.deleted.length}, not_added=${status.not_added.length}`);
-    
-    if (status.modified.length === 0 && status.created.length === 0 && status.deleted.length === 0 && status.not_added.length === 0) {
+    logger.info(
+      `Git status: modified=${status.modified.length}, created=${status.created.length}, deleted=${status.deleted.length}, not_added=${status.not_added.length}`,
+    );
+
+    if (
+      status.modified.length === 0 &&
+      status.created.length === 0 &&
+      status.deleted.length === 0 &&
+      status.not_added.length === 0
+    ) {
       logger.warn("No changes detected in working tree - nothing to commit");
       return false;
     }
-    
+
     await git.add(".");
 
     try {
@@ -641,10 +667,17 @@ export class Orchestrator {
       // Log what we're about to push
       const status = await git.status();
       const log = await git.log({ maxCount: 1 });
-      logger.info(`Git status before push: clean=${status.isClean()}, staged=${status.staged.length}, branch=${status.current}`);
-      logger.info(`Latest commit: ${log.latest?.hash?.substring(0, 7)} - ${log.latest?.message}`);
+      logger.info(
+        `Git status before push: clean=${status.isClean()}, staged=${status.staged.length}, branch=${status.current}`,
+      );
+      logger.info(
+        `Latest commit: ${log.latest?.hash?.substring(0, 7)} - ${log.latest?.message}`,
+      );
 
-      const pushResult = await git.push("origin", branch, ["--set-upstream", "--force"]);
+      const pushResult = await git.push("origin", branch, [
+        "--set-upstream",
+        "--force",
+      ]);
       logger.info(`Push result: ${JSON.stringify(pushResult)}`);
       logger.info(`Pushed to branch: ${branch}`);
       return true;
@@ -688,7 +721,9 @@ export class Orchestrator {
       await git.push("origin", fixBranch, ["--set-upstream", "--force"]);
       logger.info(`Pushed fix branch: ${fixBranch}`);
     } catch (err) {
-      logger.error(`Failed to push fix branch: ${err instanceof Error ? err.message : err}`);
+      logger.error(
+        `Failed to push fix branch: ${err instanceof Error ? err.message : err}`,
+      );
       return { pushed: false };
     }
 
