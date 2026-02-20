@@ -175,6 +175,12 @@ const EVENT_CONFIG: Record<string, StepInfo> = {
     color: "text-red-400",
     bgColor: "bg-red-500/20",
   },
+  PUSH_FALLBACK: {
+    icon: <GitPullRequest className="w-4 h-4" />,
+    label: "Trying Fix Branch + PR",
+    color: "text-yellow-400",
+    bgColor: "bg-yellow-500/20",
+  },
   CI_MONITOR_START: {
     icon: <Activity className="w-4 h-4" />,
     label: "Monitoring CI",

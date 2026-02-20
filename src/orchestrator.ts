@@ -134,6 +134,7 @@ export class Orchestrator {
     // ── Step 2–4: Retry loop ─────────────────────────────────
     let iteration = 0;
     let passed = false;
+    let pullRequestUrl: string | undefined;
 
     while (iteration < retryLimit) {
       iteration++;
@@ -199,26 +200,33 @@ export class Orchestrator {
               await this.commitChanges(repoPath, commitMsg, branchName);
               this.addTimeline(timeline, "COMMIT", commitMsg);
 
-              this.addTimeline(
-                timeline,
-                "PUSH_ATTEMPT",
-                `token=${options.githubToken ? "provided" : "missing"}`,
-              );
               if (!options.dryRun) {
-                const pushSuccess = await this.pushBranch(
+                this.addTimeline(timeline, "PUSH_ATTEMPT", `branch=${branchName}`);
+                let pushSuccess = await this.pushBranch(
                   repoPath,
                   branchName,
                   options.repoUrl,
                   options.githubToken,
                 );
                 if (pushSuccess) {
-                  this.addTimeline(timeline, "PUSH", branchName);
+                  this.addTimeline(timeline, "PUSH", `Pushed to ${branchName}`);
                 } else {
-                  this.addTimeline(
-                    timeline,
-                    "PUSH_FAILED",
-                    "No token or push error",
+                  // Fallback: push via fix branch + PR
+                  this.addTimeline(timeline, "PUSH_FALLBACK", "Trying fix branch + PR");
+                  const fallback = await this.pushViaFixBranch(
+                    repoPath,
+                    options.repoUrl,
+                    branchName,
+                    options.githubToken,
                   );
+                  if (fallback.pushed) {
+                    this.addTimeline(timeline, "PUSH", "Pushed via fix branch");
+                    if (fallback.prUrl) {
+                      this.addTimeline(timeline, "PR_CREATED", fallback.prUrl);
+                    }
+                  } else {
+                    this.addTimeline(timeline, "PUSH_FAILED", "Could not push - check token permissions");
+                  }
                 }
               }
               continue; // try again with the fix applied
@@ -277,21 +285,40 @@ export class Orchestrator {
       this.addTimeline(timeline, "COMMIT", commitMsg);
 
       // 2g. Push (unless dry-run)
-      this.addTimeline(
-        timeline,
-        "PUSH_ATTEMPT",
-        `token=${options.githubToken ? "provided" : "missing"}`,
-      );
       if (!options.dryRun) {
-        const pushSuccess = await this.pushBranch(
+        this.addTimeline(timeline, "PUSH_ATTEMPT", `branch=${branchName}`);
+        let pushSuccess = await this.pushBranch(
           repoPath,
           branchName,
           options.repoUrl,
           options.githubToken,
         );
-        if (pushSuccess) {
-          this.addTimeline(timeline, "PUSH", branchName);
+        let pullRequestUrl: string | undefined;
 
+        if (pushSuccess) {
+          this.addTimeline(timeline, "PUSH", `Pushed to ${branchName}`);
+        } else {
+          // Fallback: push via fix branch + PR
+          this.addTimeline(timeline, "PUSH_FALLBACK", "Push to main failed - trying fix branch + PR");
+          const fallback = await this.pushViaFixBranch(
+            repoPath,
+            options.repoUrl,
+            branchName,
+            options.githubToken,
+          );
+          pushSuccess = fallback.pushed;
+          if (fallback.pushed) {
+            this.addTimeline(timeline, "PUSH", "Pushed via fix branch");
+            if (fallback.prUrl) {
+              pullRequestUrl = fallback.prUrl;
+              this.addTimeline(timeline, "PR_CREATED", fallback.prUrl);
+            }
+          } else {
+            this.addTimeline(timeline, "PUSH_FAILED", "Could not push - check token permissions");
+          }
+        }
+
+        if (pushSuccess) {
           // 2h. Wait for CI and check result (only if push succeeded)
           this.addTimeline(timeline, "CI_MONITOR_START");
           const ciPassed = await this.monitorCI(branchName);
@@ -301,18 +328,12 @@ export class Orchestrator {
             passed = true;
             break;
           }
-        } else {
-          this.addTimeline(
-            timeline,
-            "PUSH_FAILED",
-            "No token or push error - check GitHub token permissions",
-          );
         }
       }
     }
 
-    // Skip PR creation - pushing directly to main
-    const pullRequestUrl: string | undefined = undefined;
+    // PR URL may have been set during push fallback
+    // (If push to main succeeded directly, no PR is needed)
 
     const status = passed ? "PASSED" : "FAILED";
     this.addTimeline(timeline, "ORCHESTRATOR_DONE", status);
@@ -566,6 +587,33 @@ export class Orchestrator {
     }
   }
 
+  private async injectTokenIntoRemote(
+    git: ReturnType<typeof simpleGit>,
+    repoUrl: string,
+    customToken?: string,
+  ): Promise<string | null> {
+    const token = customToken || config.github.token;
+    if (!token) {
+      logger.error("No GitHub token provided - cannot push");
+      return null;
+    }
+
+    try {
+      const url = new URL(repoUrl);
+      if (url.hostname === "github.com") {
+        // Use x-access-token format for PATs (works for both classic & fine-grained)
+        url.username = "x-access-token";
+        url.password = token;
+        await git.remote(["set-url", "origin", url.toString()]);
+        logger.info("Injected token into remote URL (x-access-token format)");
+      }
+    } catch (err) {
+      logger.warn(`Could not inject token into remote URL: ${err}`);
+    }
+
+    return token;
+  }
+
   private async pushBranch(
     repoPath: string,
     branch: string,
@@ -574,36 +622,72 @@ export class Orchestrator {
   ): Promise<boolean> {
     const git = simpleGit(repoPath);
 
-    // Inject GitHub token into remote URL for authentication
-    // Prefer user-provided token over default config token
-    const token = customToken || config.github.token;
-    if (!token) {
-      logger.error("No GitHub token provided - cannot push");
-      return false;
-    }
-
-    if (token && repoUrl) {
-      try {
-        const url = new URL(repoUrl);
-        if (url.hostname === "github.com" && !url.username) {
-          url.username = token;
-          await git.remote(["set-url", "origin", url.toString()]);
-          logger.info("Injected token into remote URL");
-        }
-      } catch (err) {
-        logger.warn(`Could not inject token into remote URL: ${err}`);
-      }
-    }
+    const token = await this.injectTokenIntoRemote(git, repoUrl, customToken);
+    if (!token) return false;
 
     try {
       await git.push("origin", branch, ["--set-upstream", "--force"]);
-      logger.info(`Pushed branch: ${branch}`);
+      logger.info(`Pushed to branch: ${branch}`);
       return true;
     } catch (err) {
       logger.error(
-        `Failed to push branch ${branch}: ${err instanceof Error ? err.message : err}`,
+        `Failed to push to ${branch}: ${err instanceof Error ? err.message : err}`,
       );
       return false;
+    }
+  }
+
+  /**
+   * Fallback: create a fix branch, push it, then create a PR
+   */
+  private async pushViaFixBranch(
+    repoPath: string,
+    repoUrl: string,
+    defaultBranch: string,
+    customToken?: string,
+  ): Promise<{ pushed: boolean; prUrl?: string }> {
+    const git = simpleGit(repoPath);
+    const fixBranch = `fix/eagleeye-${Date.now()}`;
+
+    try {
+      // Create fix branch from current HEAD
+      await git.checkoutLocalBranch(fixBranch);
+      logger.info(`Created fix branch: ${fixBranch}`);
+    } catch {
+      try {
+        await git.checkout(fixBranch);
+      } catch {
+        logger.error(`Could not create fix branch ${fixBranch}`);
+        return { pushed: false };
+      }
+    }
+
+    const token = await this.injectTokenIntoRemote(git, repoUrl, customToken);
+    if (!token) return { pushed: false };
+
+    try {
+      await git.push("origin", fixBranch, ["--set-upstream", "--force"]);
+      logger.info(`Pushed fix branch: ${fixBranch}`);
+    } catch (err) {
+      logger.error(`Failed to push fix branch: ${err instanceof Error ? err.message : err}`);
+      return { pushed: false };
+    }
+
+    // Create PR from fix branch to default branch
+    const prResult = await this.github.createPullRequest({
+      repoUrl,
+      branch: fixBranch,
+      title: `[EagleEye CI] Automated fixes`,
+      body: `Automated fixes applied by EagleEye CI Healing Agent.\n\nFix branch: \`${fixBranch}\``,
+      token: customToken,
+    });
+
+    if (prResult) {
+      logger.info(`PR created: ${prResult.url}`);
+      return { pushed: true, prUrl: prResult.url };
+    } else {
+      logger.warn("Fix branch pushed but PR creation failed");
+      return { pushed: true };
     }
   }
 
