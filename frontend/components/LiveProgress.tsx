@@ -157,6 +157,12 @@ const EVENT_CONFIG: Record<string, StepInfo> = {
     color: "text-sky-400",
     bgColor: "bg-sky-500/20",
   },
+  PUSH_ATTEMPT: {
+    icon: <Upload className="w-4 h-4" />,
+    label: "Attempting Push",
+    color: "text-yellow-400",
+    bgColor: "bg-yellow-500/20",
+  },
   PUSH: {
     icon: <Upload className="w-4 h-4" />,
     label: "Pushed to Remote",

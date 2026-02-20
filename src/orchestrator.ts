@@ -199,6 +199,7 @@ export class Orchestrator {
               await this.commitChanges(repoPath, commitMsg, branchName);
               this.addTimeline(timeline, "COMMIT", commitMsg);
 
+              this.addTimeline(timeline, "PUSH_ATTEMPT", `token=${options.githubToken ? "provided" : "missing"}`);
               if (!options.dryRun) {
                 const pushSuccess = await this.pushBranch(
                   repoPath,
@@ -209,7 +210,11 @@ export class Orchestrator {
                 if (pushSuccess) {
                   this.addTimeline(timeline, "PUSH", branchName);
                 } else {
-                  this.addTimeline(timeline, "PUSH_FAILED", "No token or push error");
+                  this.addTimeline(
+                    timeline,
+                    "PUSH_FAILED",
+                    "No token or push error",
+                  );
                 }
               }
               continue; // try again with the fix applied
@@ -268,6 +273,7 @@ export class Orchestrator {
       this.addTimeline(timeline, "COMMIT", commitMsg);
 
       // 2g. Push (unless dry-run)
+      this.addTimeline(timeline, "PUSH_ATTEMPT", `token=${options.githubToken ? "provided" : "missing"}`);
       if (!options.dryRun) {
         const pushSuccess = await this.pushBranch(
           repoPath,
@@ -288,7 +294,11 @@ export class Orchestrator {
             break;
           }
         } else {
-          this.addTimeline(timeline, "PUSH_FAILED", "No token or push error - check GitHub token permissions");
+          this.addTimeline(
+            timeline,
+            "PUSH_FAILED",
+            "No token or push error - check GitHub token permissions",
+          );
         }
       }
     }
@@ -582,7 +592,9 @@ export class Orchestrator {
       logger.info(`Pushed branch: ${branch}`);
       return true;
     } catch (err) {
-      logger.error(`Failed to push branch ${branch}: ${err instanceof Error ? err.message : err}`);
+      logger.error(
+        `Failed to push branch ${branch}: ${err instanceof Error ? err.message : err}`,
+      );
       return false;
     }
   }
