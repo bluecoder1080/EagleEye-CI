@@ -75,7 +75,10 @@ export class RepoAnalyzerAgent {
     return analysis;
   }
 
-  private async cloneRepo(repoUrl: string, customToken?: string): Promise<string> {
+  private async cloneRepo(
+    repoUrl: string,
+    customToken?: string,
+  ): Promise<string> {
     const repoName = this.extractRepoName(repoUrl);
     const timestamp = Date.now();
     const dirName = `${repoName}-${timestamp}`;

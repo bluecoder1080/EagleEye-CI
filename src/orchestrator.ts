@@ -106,7 +106,10 @@ export class Orchestrator {
     this.addTimeline(timeline, "CLONE_START");
     let analysis: RepoAnalysis;
     try {
-      analysis = await this.analyzer.analyze(options.repoUrl, options.githubToken);
+      analysis = await this.analyzer.analyze(
+        options.repoUrl,
+        options.githubToken,
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.addTimeline(timeline, "CLONE_FAILED", msg);
