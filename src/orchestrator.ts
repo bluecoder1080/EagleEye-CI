@@ -575,15 +575,27 @@ export class Orchestrator {
     repoPath: string,
     message: string,
     branch: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const git = simpleGit(repoPath);
+    
+    // Check if there are changes to commit
+    const status = await git.status();
+    logger.info(`Git status: modified=${status.modified.length}, created=${status.created.length}, deleted=${status.deleted.length}, not_added=${status.not_added.length}`);
+    
+    if (status.modified.length === 0 && status.created.length === 0 && status.deleted.length === 0 && status.not_added.length === 0) {
+      logger.warn("No changes detected in working tree - nothing to commit");
+      return false;
+    }
+    
     await git.add(".");
 
     try {
-      await git.commit(message);
-      logger.info(`Committed: ${message}`);
-    } catch {
-      logger.warn("Nothing to commit (working tree clean)");
+      const commitResult = await git.commit(message);
+      logger.info(`Committed: ${message} (${commitResult.commit})`);
+      return true;
+    } catch (err) {
+      logger.warn(`Commit failed: ${err instanceof Error ? err.message : err}`);
+      return false;
     }
   }
 
@@ -626,7 +638,14 @@ export class Orchestrator {
     if (!token) return false;
 
     try {
-      await git.push("origin", branch, ["--set-upstream", "--force"]);
+      // Log what we're about to push
+      const status = await git.status();
+      const log = await git.log({ maxCount: 1 });
+      logger.info(`Git status before push: clean=${status.isClean()}, staged=${status.staged.length}, branch=${status.current}`);
+      logger.info(`Latest commit: ${log.latest?.hash?.substring(0, 7)} - ${log.latest?.message}`);
+
+      const pushResult = await git.push("origin", branch, ["--set-upstream", "--force"]);
+      logger.info(`Push result: ${JSON.stringify(pushResult)}`);
       logger.info(`Pushed to branch: ${branch}`);
       return true;
     } catch (err) {
