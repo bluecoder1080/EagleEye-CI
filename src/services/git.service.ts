@@ -31,6 +31,14 @@ export class GitService {
     if (!token) return repoUrl;
 
     try {
+      // Build auth URL manually to avoid URL encoding issues with tokens
+      const cleanUrl = repoUrl.replace(/\.git$/, "").trim();
+      const match = cleanUrl.match(/github\.com[\/:]([^\/]+)\/([^\/]+)/);
+      if (match) {
+        const [, owner, repo] = match;
+        return `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
+      }
+      // Fallback: try URL constructor
       const url = new URL(repoUrl);
       if (url.hostname === "github.com" && !url.username) {
         url.username = "x-access-token";

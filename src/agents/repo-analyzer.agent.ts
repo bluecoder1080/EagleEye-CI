@@ -45,10 +45,10 @@ export class RepoAnalyzerAgent {
     }
   }
 
-  async analyze(repoUrl: string, customToken?: string): Promise<RepoAnalysis> {
+  async analyze(repoUrl: string): Promise<RepoAnalysis> {
     logger.info(`Analyzing repository: ${repoUrl}`);
 
-    const localPath = await this.cloneRepo(repoUrl, customToken);
+    const localPath = await this.cloneRepo(repoUrl);
     const files = this.listTopLevelFiles(localPath);
     const language = this.detectLanguage(files);
     const testCommand = this.detectTestCommand(localPath, language, files);
@@ -77,7 +77,6 @@ export class RepoAnalyzerAgent {
 
   private async cloneRepo(
     repoUrl: string,
-    customToken?: string,
   ): Promise<string> {
     const repoName = this.extractRepoName(repoUrl);
     const timestamp = Date.now();
@@ -91,15 +90,24 @@ export class RepoAnalyzerAgent {
 
     // Inject token for private repos or authenticated access
     let authUrl = repoUrl;
-    const token = customToken || config.github.token;
+    const token = config.github.token;
     if (token) {
       try {
-        const url = new URL(repoUrl);
-        if (url.hostname === "github.com") {
-          url.username = "x-access-token";
-          url.password = token;
-          authUrl = url.toString();
+        // Build auth URL manually to avoid URL encoding issues with tokens
+        const cleanUrl = repoUrl.replace(/\.git$/, "").trim();
+        const match = cleanUrl.match(/github\.com[\/:]([^\/]+)\/([^\/]+)/);
+        if (match) {
+          const [, owner, repo] = match;
+          authUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
           logger.info("Using x-access-token for clone authentication");
+        } else {
+          const url = new URL(repoUrl);
+          if (url.hostname === "github.com") {
+            url.username = "x-access-token";
+            url.password = token;
+            authUrl = url.toString();
+            logger.info("Using x-access-token for clone authentication (URL fallback)");
+          }
         }
       } catch {
         // Invalid URL, use as-is

@@ -26,7 +26,6 @@ export interface OrchestratorOptions {
   retryLimit?: number;
   dryRun?: boolean;
   onProgress?: ProgressCallback;
-  githubToken?: string; // User-provided token for pushing to their repos
 }
 
 export interface FixRecord {
@@ -108,7 +107,6 @@ export class Orchestrator {
     try {
       analysis = await this.analyzer.analyze(
         options.repoUrl,
-        options.githubToken,
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -213,7 +211,6 @@ export class Orchestrator {
                   repoPath,
                   branchName,
                   options.repoUrl,
-                  options.githubToken,
                 );
                 if (pushSuccess) {
                   this.addTimeline(timeline, "PUSH", `Pushed to ${branchName}`);
@@ -228,7 +225,6 @@ export class Orchestrator {
                     repoPath,
                     options.repoUrl,
                     branchName,
-                    options.githubToken,
                   );
                   if (fallback.pushed) {
                     this.addTimeline(timeline, "PUSH", "Pushed via fix branch");
@@ -307,7 +303,6 @@ export class Orchestrator {
           repoPath,
           branchName,
           options.repoUrl,
-          options.githubToken,
         );
 
         if (pushSuccess) {
@@ -323,7 +318,6 @@ export class Orchestrator {
             repoPath,
             options.repoUrl,
             branchName,
-            options.githubToken,
           );
           pushSuccess = fallback.pushed;
           if (fallback.pushed) {
@@ -632,22 +626,31 @@ export class Orchestrator {
   private async injectTokenIntoRemote(
     git: ReturnType<typeof simpleGit>,
     repoUrl: string,
-    customToken?: string,
   ): Promise<string | null> {
-    const token = customToken || config.github.token;
+    const token = config.github.token;
     if (!token) {
       logger.error("No GitHub token provided - cannot push");
       return null;
     }
 
     try {
-      const url = new URL(repoUrl);
-      if (url.hostname === "github.com") {
-        // Use x-access-token format for PATs (works for both classic & fine-grained)
-        url.username = "x-access-token";
-        url.password = token;
-        await git.remote(["set-url", "origin", url.toString()]);
-        logger.info("Injected token into remote URL (x-access-token format)");
+      // Build auth URL manually to avoid URL encoding issues with tokens
+      const cleanUrl = repoUrl.replace(/\.git$/, "").trim();
+      const match = cleanUrl.match(/github\.com[\/:]([^\/]+)\/([^\/]+)/);
+      if (match) {
+        const [, owner, repo] = match;
+        const authUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
+        await git.remote(["set-url", "origin", authUrl]);
+        logger.info(`Injected token into remote URL for ${owner}/${repo}`);
+      } else {
+        // Fallback: try URL constructor
+        const url = new URL(repoUrl);
+        if (url.hostname === "github.com") {
+          url.username = "x-access-token";
+          url.password = token;
+          await git.remote(["set-url", "origin", url.toString()]);
+          logger.info("Injected token into remote URL (URL fallback)");
+        }
       }
     } catch (err) {
       logger.warn(`Could not inject token into remote URL: ${err}`);
@@ -660,11 +663,10 @@ export class Orchestrator {
     repoPath: string,
     branch: string,
     repoUrl: string,
-    customToken?: string,
   ): Promise<boolean> {
     const git = simpleGit(repoPath);
 
-    const token = await this.injectTokenIntoRemote(git, repoUrl, customToken);
+    const token = await this.injectTokenIntoRemote(git, repoUrl);
     if (!token) return false;
 
     try {
@@ -686,9 +688,16 @@ export class Orchestrator {
       logger.info(`Pushed to branch: ${branch}`);
       return true;
     } catch (err) {
-      logger.error(
-        `Failed to push to ${branch}: ${err instanceof Error ? err.message : err}`,
-      );
+      const errMsg = err instanceof Error ? err.message : String(err);
+      logger.error(`Failed to push to ${branch}: ${errMsg}`);
+      // Log common failure reasons
+      if (errMsg.includes("403") || errMsg.includes("Permission")) {
+        logger.error("Token lacks push permission. Ensure token has 'repo' or 'Contents: Read and write' scope.");
+      } else if (errMsg.includes("401") || errMsg.includes("Authentication")) {
+        logger.error("Authentication failed. Check if your GitHub token is valid and not expired.");
+      } else if (errMsg.includes("404")) {
+        logger.error("Repository not found. Check the repo URL and token access.");
+      }
       return false;
     }
   }
@@ -700,7 +709,6 @@ export class Orchestrator {
     repoPath: string,
     repoUrl: string,
     defaultBranch: string,
-    customToken?: string,
   ): Promise<{ pushed: boolean; prUrl?: string }> {
     const git = simpleGit(repoPath);
     const fixBranch = `fix/eagleeye-${Date.now()}`;
@@ -718,7 +726,7 @@ export class Orchestrator {
       }
     }
 
-    const token = await this.injectTokenIntoRemote(git, repoUrl, customToken);
+    const token = await this.injectTokenIntoRemote(git, repoUrl);
     if (!token) {
       // Switch back to default branch before returning
       try {
@@ -751,8 +759,16 @@ export class Orchestrator {
       branch: fixBranch,
       title: `[EagleEye CI] Automated fixes`,
       body: `Automated fixes applied by EagleEye CI Healing Agent.\n\nFix branch: \`${fixBranch}\``,
-      token: customToken,
+      token: config.github.token || undefined,
     });
+
+    // Switch back to default branch for next iteration
+    try {
+      await git.checkout(defaultBranch);
+      logger.info(`Switched back to ${defaultBranch}`);
+    } catch {
+      /* best-effort */
+    }
 
     if (prResult) {
       logger.info(`PR created: ${prResult.url}`);
